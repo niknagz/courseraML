@@ -1,0 +1,81 @@
+---
+title: "Final Project Coursera ML"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem Statement:
+
+Researchers used bioinformatic technology to collect Human Activity Recognition data from exercises performed by six individuals. The six individuals performed each exercise in one of five ways - as an example, for dumbell lifts, exercises were performed “exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E)” (Velloso et al., 2013). This data is contained in the “HAR dataset”, but 20 entries from the dataset have been set aside in a “test set” and had their “class” variables removed. The goal of this analysis is to use the HAR dataset to craft a machine learning model that correctly predicts the class of the 20 entries in the test set.
+
+## Data Cleaning:
+
+In order to create an effective model, variables that do not contain additional information, are strongly correlated with one another, or are otherwise uninformative should be removed. In the HAR dataset, 100 variables were missing about 97% of their values - these were also all of the variables describing metrics calculated by researchers using the raw HAR data, such as ranges, averages, and standard deviations. Since these were in some way correlated with the raw data and had so many missing values, these columns were removed from the dataset. The variable “X”, which describes the number of the sample, was also removed as it is unrelated to the exercise class. 
+
+## Model Selection:
+
+Because the data was high-dimensional and features were both categorical and numerical, a Random Forest approach was selected. This modeling approach is often highly accurate but computationally demanding, so a common, less demanding alternative - the C4.5 method - was also considered.
+
+## Cross Validation:
+
+Immediately after data cleaning, the training set was split into a training (67%) and validation set (33%). The Random Forest and C4.5 model were both trained on the training set using 10-fold cross validation before being applied to the validation set. The final Random Forest model’s “mtry” (the number of variables randomly sampled as candidates at each split) was 41, while the C and M values used in the final C4.5 model were 0.5 and 1, respectively. The Random Forest model outperformed the C4.5 model on the validation set, so it was selected as the final model. Validation set accuracies were 1.0 for Random Forest and 0.9954 for C4.5. 
+
+
+## Error:
+
+I expect the out of sample error to be greater than 1-0.9987827=0.0012173. This was the model’s error in the training set, and while generally the model will have lower accuracy when applied to test or validation sets, that was not true in this case. Since the training set provided the largest modeling error, the best estimate for the model’s true error is that it is greater than 0.0012173.
+
+## Conclusion:
+
+This model performed  well, with satisfing results. The Random Forest model was much more computationally taxing, but the C4.5 model presented a good substitute when a Random Forest model was impossible. 
+
+## Code
+```
+#load data/packages:
+library(RWeka)
+library(caret)
+training<- read.csv("pml-training.csv")
+
+#clean data
+training[training==""]<-NA#
+training[training=="#DIV/0!"]<-NA
+for(i in 1:ncol(training)){
+  y[i]<-sum(is.na(training[,i]),na.rm=T)
+}
+x<-which(y!=0)
+training<-training[,-c(1,x)]
+
+#create validation set
+inVal<-createDataPartition(y=training$classe,p=.33,list=F)
+validation <- training[inVal,]
+training <-training[-inVal,]
+
+#create models
+modFit<-train(classe~.,method="J48",data=training,trControl=trainControl(method="cv", number = 10))
+modFit1<-train(classe~.,method="rf",data=training,trControl=trainControl(method="cv", number = 10))
+
+#predict on validation set
+j48pred<-predict(modFit, newdata=validation)
+confusionMatrix(j48pred,validation$classe)
+
+rfpred<-predict(modFit1,newdata=validation)
+confusionMatrix(rfpred,validation$classe)
+
+#predict on test set
+testing<- read.csv("pml-testing.csv")
+
+testing[testing==""]<-NA#
+testing[testing=="#DIV/0!"]<-NA
+for(i in 1:ncol(testing)){
+  y[i]<-sum(is.na(testing[,i]),na.rm=T)
+}
+x<-which(y!=0)
+testing<-testing[,-c(1,160,x)]
+
+rfpred1<-predict(modFit1,newdata=testing)
+```
+
+
